@@ -1,4 +1,5 @@
 # protobuf 3.20
+import pandas as pd
 import os
 import matplotlib
 matplotlib.use("TkAgg")
@@ -118,23 +119,49 @@ def main():
             .format(ranseed, alpha, beta, patch_size))
 
     # Set Path
-    # 데이터 저장 경로 설정
-    data_dir = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data'
-    train_dir = os.path.join(data_dir, 'train')
-    train_img_dir = os.path.join(train_dir, 'image_Hemo_nifti_Resize_256')
-    train_gt_dir = os.path.join(train_dir, 'label_nrrd(until_5th)_Resize_256_exclude_ChronicSDH')
-    test_dir = os.path.join(data_dir, 'test')
-    test_img_dir = os.path.join(test_dir, 'image_Hemo_nifti_Resize_256')
-    test_gt_dir = os.path.join(test_dir, 'label_nrrd(until_5th)_Resize_256_exclude_ChronicSDH')
+    image_dir = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data\until_7th\image_Hemo_nifti (ALL)_Resize(256, 256, 64)'
+    gt_dir = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data\until_7th\label_nrrd(until_7th)_Resize(256, 256, 64)_Binary_exclude_ChronicSDH'
+    # image_dir = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data\until_7th\image_Hemo_nifti (ALL)_Resize(256, 256, 256)'
+    # gt_dir = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data\until_7th\label_nrrd(until_7th)_Resize(256, 256, 256)_Binary_exclude_ChronicSDH'
+    path_GT_csv = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data\until_7th\20230811_GT_ICH_Annotation_n3727_7차수령데이터까지.csv'
+    df = pd.read_csv(path_GT_csv)
 
-    # 정렬된 이미지 및 라벨 경로 리스트 생성
-    train_img_path = sorted(glob.glob(train_img_dir + '/*.nii.gz'))
-    train_gt_path = sorted(glob.glob(train_gt_dir + '/*.nrrd'))
-    test_img_path = sorted(glob.glob(test_img_dir + '/*.nii.gz'))
-    test_gt_path = sorted(glob.glob(test_gt_dir + '/*.nrrd'))
+    train_img_path, train_gt_path = [], []
+    test_img_path, test_gt_path = [], []
+    # DataFrame 순회하며 Type에 따라 경로 분류
+    for index, row in df.iterrows():
+        fn = row['Image'].replace('.nii.gz', '')
+        image_path = os.path.join(image_dir, fn + '.nii.gz')
+        gt_path = os.path.join(gt_dir, fn + '-label.nii.gz')  # + '-label.nrrd'
+
+        # 파일 경로가 유효한지 확인
+        if not os.path.exists(image_path) or not os.path.exists(gt_path):
+            print(f"Warning: File paths do not exist for {fn}")
+            continue
+
+        if row['Type'] == 'Test':
+            test_img_path.append(image_path)
+            test_gt_path.append(gt_path)
+        else:
+            train_img_path.append(image_path)
+            train_gt_path.append(gt_path)
+
+    # data_dir = r'D:\00000000_Data\20230630_ICH_SwinUNETR_Data'
+    # train_dir = os.path.join(data_dir, 'train')
+    # train_img_dir = os.path.join(train_dir, 'image_Hemo_nifti_Resize_256')
+    # train_gt_dir = os.path.join(train_dir, 'label_nrrd(until_5th)_Resize_256_exclude_ChronicSDH')
+    # test_dir = os.path.join(data_dir, 'test')
+    # test_img_dir = os.path.join(test_dir, 'image_Hemo_nifti_Resize_256')
+    # test_gt_dir = os.path.join(test_dir, 'label_nrrd(until_5th)_Resize_256_exclude_ChronicSDH')
+
+    # # 정렬된 이미지 및 라벨 경로 리스트 생성
+    # train_img_path = sorted(glob.glob(train_img_dir + '/*.nii.gz'))
+    # train_gt_path = sorted(glob.glob(train_gt_dir + '/*.nrrd'))
+    # test_img_path = sorted(glob.glob(test_img_dir + '/*.nii.gz'))
+    # test_gt_path = sorted(glob.glob(test_gt_dir + '/*.nrrd'))
 
     # Slicing?
-    do_slice = False
+    do_slice = True
     if do_slice:
         # Set data list
         # 훈련 및 테스트 인덱스 리스트 설정
@@ -147,8 +174,6 @@ def main():
 
         with open(log_path + 'testindex.txt', 'w') as f:
             f.write("\n".join([str(x) for x in test_indices]))
-
-
 
         # 훈련 및 테스트 이미지와 라벨 경로 리스트에서 해당 인덱스만 선택
         train_img_path = [train_img_path[i] for i in train_indices]
@@ -639,7 +664,7 @@ def main():
                 # - Image를 Recon 해서 만드는 형식으로 변경
                 # - 기존 코드는, 라벨 파일을 저장하려고 했던거 같은데... 오류 남
                 sname = test_gt_path[i].replace('-label', '').split('\\')[-1].split('.')[0]
-                orig_dir = test_img_dir
+                orig_dir = image_dir #test_img_dir
                 orig_fpath = os.path.join(orig_dir, sname + '.nii.gz')
                 orig_nii = nib.load(orig_fpath)
 
